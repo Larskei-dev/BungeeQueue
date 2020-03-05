@@ -1,0 +1,5 @@
+name: BungeeQueue
+author: Larskei
+version: 2.0.7
+main: BungeeQueue.QueueMain
+description: A very simple bungeecord queue system
