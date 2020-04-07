@@ -1,0 +1,54 @@
+0a: ▀█████████▄  ███    █▄  ███▄▄▄▄      ▄██████▄     ▄████████    ▄████████
+1a: '  ███    ███ ███    ███ ███▀▀▀██▄   ███    ███   ███    ███   ███    ███'
+2a: '  ███    ███ ███    ███ ███   ███   ███    █▀    ███    █▀    ███    █▀ '
+3a: ' ▄███▄▄▄██▀  ███    ███ ███   ███  ▄███         ▄███▄▄▄      ▄███▄▄▄    '
+4a: '▀▀███▀▀▀██▄  ███    ███ ███   ███ ▀▀███ ████▄  ▀▀███▀▀▀     ▀▀███▀▀▀    '
+5a: '  ███    ██▄ ███    ███ ███   ███   ███    ███   ███    █▄    ███    █▄ '
+6a: '  ███    ███ ███    ███ ███   ███   ███    ███   ███    ███   ███    ███'
+7a: ▄█████████▀  ████████▀   ▀█   █▀    ████████▀    ██████████   ██████████
+8a: '--------------------------------------------------------------------------'
+9a: ████████▄   ███    █▄     ▄████████ ███    █▄     ▄████████
+1b: ███    ███  ███    ███   ███    ███ ███    ███   ███    ███
+2b: '███    ███  ███    ███   ███    █▀  ███    ███   ███    █▀ '
+3b: '███    ███  ███    ███  ▄███▄▄▄     ███    ███  ▄███▄▄▄    '
+4b: '███    ███  ███    ███ ▀▀███▀▀▀     ███    ███ ▀▀███▀▀▀    '
+5b: '███    ███  ███    ███   ███    █▄  ███    ███   ███    █▄ '
+6b: ███  ▀ ███  ███    ███   ███    ███ ███    ███   ███    ███
+7b: ' ▀██████▀▄█ ████████▀    ██████████ ████████▀    ██████████'
+8b: '--------------------------------------------------------------------------'
+9b:  Spanish Translation by Rubiz
+1c: '--------------------------------------------------------------------------'
+'|': El multiplicador de abajo determina el tiempo de espera, cuanto más grande sea
+  mas grande exponencialmente sera el tiempo de espera por jugador en la cola
+'||': si dos jugadores estan en la cola el segundo jugador tiene Multiplier * 2 que esperar antes que
+  entre al servidor, si tu servidor crashea porqu elos jugadores se unen muy rápido,
+  prueba a subir el multiplicador
+'-': '--------------------------------------------------------------------------'
+Multiplier: 1
+'|||': Esto decide si se debe factorizar o no el tamaño del servidor (default is false)
+'||||': Si es 'true' la nueva ecuación es (AmountOfPlayersInQueue * Multiplier) + AmountOfPlayersOnServer
+--: '--------------------------------------------------------------------------'
+IsServerSizeCalculated: false
+DonorWaitMultiplier: 1
+'---': '--------------------------------------------------------------------------'
+'|||||': El mensaje enviado a no donantes, placeholders disponibles %queuetime%  %queueposition%
+  and %queuetotal% (QueueTime muestra el tiempo estimado hasta entrar al servidor, queueposition
+  es la posición en la cola del jugador, y queuetotal son los jugadores totales en la cola
+'----': '--------------------------------------------------------------------------'
+EnteringQueueMessage: '&aGracias por entrar en la cola, serás conectado en %queuetime%
+  segundos, eres el %queueposition% jugador en la cola'
+ShowDonorQueueTimer: true
+EnterningDonorQueueMessage: Estas en la cola de los donantes, estas el %queueposition% y
+  te uniras en %queuetime% segundos, hay %donorqueuetotal% jugadores en la cola
+SkippingQueueMessage: Has saltado la cola
+FallBackServer: lobby
+'-----': '--------------------------------------------------------------------------'
+'||||||': si un servidor esta por encima de este limite de jugadores, se pausara la cola para
+  las personas en ella hasta que el server tenga un espacio disponible, se mide basado
+  en el integer y no en el máximo del servidor (en el caso de que quieras que los admins o
+  cualquier cosa pueda entrar, cualquiera con bungeequeue.skip se saltará esto,
+  y siempre intentara conectarse aunque el recuento de jugadores se pase del máximo)
+'------': '--------------------------------------------------------------------------'
+MaximumSize: 100
+FullServerCannotConnectMessage: '&cEl servidor al que te estas intentando conectar esta lleno,
+  serás conectado cuando haya un espacio disponible'
