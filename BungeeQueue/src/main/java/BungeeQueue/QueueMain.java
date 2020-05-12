@@ -1,6 +1,7 @@
 package BungeeQueue;
 
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.config.ServerInfo;
@@ -23,8 +24,18 @@ public final class QueueMain extends Plugin {
     int inDonorQueue = 0;
     boolean isDonor = false;
     public File file;
+    public File fileLists;
+    public Configuration listConfig;
     public Configuration config;
-    ArrayList<List<String>> listOfGroups = new ArrayList<>();
+    ArrayList<ProxiedPlayer> waitingPlayers = new ArrayList<>();
+    ArrayList<String> waitingPlayersTargets = new ArrayList<>();
+    boolean isCheck = false;
+    CommandSender sender;
+    ArrayList<ProxiedPlayer> pausedPlayers = new ArrayList<>();
+    ArrayList<String> pausedTargets = new ArrayList<>();
+    ArrayList<String> pausedServers = new ArrayList<>();
+    ArrayList<String> blockedServers = new ArrayList<>();
+
 
     @Override
     public void onEnable() {
@@ -32,273 +43,444 @@ public final class QueueMain extends Plugin {
         getProxy().getPluginManager().registerCommand(this, new Move(this));
         getProxy().getPluginManager().registerCommand(this, new QueueTime(this));
         getProxy().getPluginManager().registerCommand(this, new QTime(this));
+        getProxy().getPluginManager().registerCommand(this, new Pause(this));
+        getProxy().getPluginManager().registerListener(this, new EventManager(this));
         file = new File(getDataFolder(), "Config.yml");
+        fileLists = new File(getDataFolder(), "Lists.yml");
         try {
-            if (!file.exists()) {
+            if (!file.exists() || !fileLists.exists()) {
                 file.getParentFile().mkdirs();
+                fileLists.getParentFile().mkdirs();
                 try {
                     file.createNewFile();
+                    fileLists.createNewFile();
+                    listConfig = ConfigurationProvider.getProvider(YamlConfiguration.class).load(fileLists);
+                    List<String> blockedservers = new ArrayList<>();
+                    blockedservers.add("ExampleServer");
+                    blockedservers.add("ExampleServer2");
+                    listConfig.set("BlockedServers", blockedservers);
+                    List<String> pausedServers = new ArrayList<>();
+                    pausedServers.add("AnotherExampleServer");
+                    pausedServers.add("AnotherExampleAsWell");
+                    listConfig.set("PausedServers", pausedServers);
+                    List<String> maximumSizing = new ArrayList<>();
+                    maximumSizing.add("ExampleServer1");
+                    maximumSizing.add("ExampleServer2");
+                    listConfig.set("MaximumServerSizeNames", maximumSizing);
+                    List<Integer> maximumNumbers = new ArrayList<>();
+                    maximumNumbers.add(100);
+                    maximumNumbers.add(200);
+                    listConfig.set("MaximumServerSizes", maximumNumbers);
+                    ConfigurationProvider.getProvider(YamlConfiguration.class).save(listConfig, fileLists);
                     config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(file);
-                    config.set("#", "The multiplier below is what determines wait time, the larger the multiplier the longer the queue gets exponentially per player in queue");
-                    config.set("##", "if 2 players are in queue 2nd player has Multiplier * 2 to wait before they enter the server, if your server is crashing because of players joining to fast try setting the multiplier larger");
+                    config.set("0a", "▀█████████▄  ███    █▄  ███▄▄▄▄      ▄██████▄     ▄████████    ▄████████");
+                    config.set("1a", "  ███    ███ ███    ███ ███▀▀▀██▄   ███    ███   ███    ███   ███    ███");
+                    config.set("2a", "  ███    ███ ███    ███ ███   ███   ███    █▀    ███    █▀    ███    █▀ ");
+                    config.set("3a", " ▄███▄▄▄██▀  ███    ███ ███   ███  ▄███         ▄███▄▄▄      ▄███▄▄▄    ");
+                    config.set("4a", "▀▀███▀▀▀██▄  ███    ███ ███   ███ ▀▀███ ████▄  ▀▀███▀▀▀     ▀▀███▀▀▀    ");
+                    config.set("5a", "  ███    ██▄ ███    ███ ███   ███   ███    ███   ███    █▄    ███    █▄ ");
+                    config.set("6a", "  ███    ███ ███    ███ ███   ███   ███    ███   ███    ███   ███    ███");
+                    config.set("7a", "▄█████████▀  ████████▀   ▀█   █▀    ████████▀    ██████████   ██████████");
+                    config.set("8a", "--------------------------------------------------------------------------");
+                    config.set("9a", "████████▄   ███    █▄     ▄████████ ███    █▄     ▄████████");
+                    config.set("1b", "███    ███  ███    ███   ███    ███ ███    ███   ███    ███");
+                    config.set("2b", "███    ███  ███    ███   ███    █▀  ███    ███   ███    █▀ ");
+                    config.set("3b", "███    ███  ███    ███  ▄███▄▄▄     ███    ███  ▄███▄▄▄    ");
+                    config.set("4b", "███    ███  ███    ███ ▀▀███▀▀▀     ███    ███ ▀▀███▀▀▀    ");
+                    config.set("5b", "███    ███  ███    ███   ███    █▄  ███    ███   ███    █▄ ");
+                    config.set("6b", "███  ▀ ███  ███    ███   ███    ███ ███    ███   ███    ███");
+                    config.set("7b", " ▀██████▀▄█ ████████▀    ██████████ ████████▀    ██████████");
+                    config.set("8b", "--------------------------------------------------------------------------");
+                    config.set("|", "The multiplier below is what determines wait time, the larger the multiplier the longer the queue gets exponentially per player in queue");
+                    config.set("||", "if 2 players are in queue 2nd player has Multiplier * 2 to wait before they enter the server, if your server is crashing because of players joining to fast try setting the multiplier larger");
+                    config.set("-", "--------------------------------------------------------------------------");
+                    config.set("ConnectingMessage", "&aConnecting... Please wait.");
                     config.set("Multiplier", 1);
-                    config.set("###", "This decides whether or not to factor server size in (default it false)");
-                    config.set("####", "If true new equation is (AmountOfPlayersInQueue * Multiplier) + AmountOfPlayersOnServer");
-                    config.set("#####:", "^^^ Follows normal order of operations ^^^");
+                    config.set("|||", "This decides whether or not to factor server size in (default is false)");
+                    config.set("||||", "If true new equation is (AmountOfPlayersInQueue * Multiplier) + AmountOfPlayersOnServer");
+                    config.set("--", "--------------------------------------------------------------------------");
                     config.set("IsServerSizeCalculated", false);
                     config.set("DonorWaitMultiplier", 1);
-                    config.set("JoinedQueueMessage", "Thank you for queueing");
-                    config.set("######", "The message that tells you that you are in queue is split into 3 different messages in the config so it will do message1 + the queue time + message2 + howManyPlayersAreInQueue + message3");
-                    config.set("EnteringNonDonorQueueMessage1", "You are in queue, you will join in ");
-                    config.set("EnteringNonDonorQueueMessage2", " seconds there are ");
-                    config.set("EnteringNonDonorQueueMessage3", " Players in queue.");
-                    config.set("########", "This is the Donor queue message format message1 + queueTime in seconds + message2");
-                    config.set("EnterningDonorQueueMessage1", "You are in donor queue, you will join in ");
-                    config.set("EnteringDonorQueueMessage2", " seconds");
-                    config.set("ThankYouMessage", "Thank you for queueing");
+                    config.set("---", "--------------------------------------------------------------------------");
+                    config.set("|||||", "The message sent to non-donors, available placeholders %queuetime%  %queueposition% and %queuetotal% (QueueTime shows the estimated time till connection, queueposition shows their queueposition, and queuetotal shows total players in queue");
+                    config.set("----", "--------------------------------------------------------------------------");
+                    config.set("EnteringQueueMessage", "&aThank you for queueing you will be connected in %queuetime% seconds, you are %queueposition% player in queue");
+                    config.set("EnteringDonorQueueMessage", "You are in donor queue, you are in %queueposition% and will join in %queuetime% seconds, there are %donorqueuetotal% players in queue");
                     config.set("SkippingQueueMessage", "You have skipped the queue");
-                    config.set("#########", "enabling this option means when someone with bungeequeue.kick joins a full server it will kick a random player without the permission bungeequeue.nokick to the specified fallbackserver");
-                    config.set("kickNonDonorPlayers", false);
                     config.set("FallBackServer", "lobby");
-                    config.set("##########", "if a server is over this many players it will begin to kick players for players who have bungeequeue.kick permission");
+                    config.set("-----", "--------------------------------------------------------------------------");
+                    config.set("||||||", "if a server is over this many players this will pause the queue for those specific people until that server has a empty spot available, it measures it based off of this integer and not the maximum of the server (in case you want admins or something to be able to login, anyone with bungeequeue.skip will override this, and will always attempt to connect regardless if the playercount exceeds maximumsize) available placeholder %waitposition%");
+                    config.set("------", "--------------------------------------------------------------------------");
                     config.set("MaximumSize", 100);
-                    config.set("FullServerCannotConnectMessage", "The server you are trying to connect to is full.");
-                    config.set("###########", "Enables server groups, server groups are like fallback servers however they are relative to a group so if you have for example Group1 and it has Server1 and Server2 in it, when a player is kicked from server1 it will push them onto server2 or any server that has their player amount below what the set maximum is, if a server cannot be found it will connect them to the defined fallback server, regardless if the player has the kick permission or not, it will not try to kick other players when moving them after being kicked from another server this is to reduce the chance of players constantly being kicked and moved around possibly causing lag");
-                    config.set("############", "This feature supports unlimted groups currently of unlimited size, you must SET how MANY groups there are in total, KEEP IN MIND COMPUTERS START COUNTING AT 0 SO if you have 5 groups you should put 4 below, EVERY server you have must be in a group EXCEPT for the fallback server if enabled, if it is not IT WILL throw an error");
-                    config.set("AmountOfGroups", 0);
-                    config.set("ServerGrouping", false);
-                    List<String> list = new ArrayList<>();
-                    list.add("exampleServer");
-                    list.add("exampleServer2");
-                    list.add("YourServerNameHere");
-                    config.set("Group0", list);
+                    config.set("FullServerCannotConnectMessage", "&cThe server you are trying to connect to is full you will be connected once there is a free slot available");
+                    config.set("-------", "--------------------------------------------------------------------------");
+                    config.set("|||||||", "This handles when a server is paused & not accessible and someone attempts to queue for it, it will put them in the waiting queue, and have them wait for the server to be unpaused, similar to the function of when a server is full");
+                    config.set("--------", "--------------------------------------------------------------------------");
+                    config.set("PausedServerMessage", "&cThe server you are trying to connect to is offline or unavailable you will be connected when it comes online. You are %waitingposition% waiting to connect.");
+                    config.set("-------", "--------------------------------------------------------------------------");
+                    config.set("||||||||", "This message is for players waiting to connect when a server is offline, or when it is full, everytime a player connects it will send this to everyone else waiting in queue, available placeholders %playerWhoConnected% and %waitingposition%");
+                    config.set("--------", "--------------------------------------------------------------------------");
+                    config.set("UpdateMessageForWaitingPlayers", "&a%playerWhoConnected% connected to the server, you are now %waitingposition% in queue");
+                    config.set("-------", "--------------------------------------------------------------------------");
+                    config.set("BlockedServerMessage", "&cThe Server you have tried to queue for is blocked and your queue has been cancelled");
+                    config.set("--------", "--------------------------------------------------------------------------");
+                    config.set("|||||||||", "The message sent when a player joins a new queue, this happens if they are in a waiting queue, or a paused queue only, it will automatically remove them from their previous queue");
+                    config.set("---------", "--------------------------------------------------------------------------");
+                    config.set("QueueResetMessage", "&aYou were &cremoved &afrom your previous queue because you joined a new queue.");
+                    config.set("LeftQueueMessage", "&cYou left the %servername% queue.");
                     ConfigurationProvider.getProvider(YamlConfiguration.class).save(config, file);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
             config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(file);
+            listConfig = ConfigurationProvider.getProvider(YamlConfiguration.class).load(fileLists);
+            for(int i = 0; listConfig.getList("PausedServers").size() > i; i++){
+                pausedServers.add(listConfig.getList("PausedServers").get(i).toString());
+            }
+            for(int i = 0; listConfig.getList("BlockedServers").size() > i; i++){
+                blockedServers.add(listConfig.getList("BlockedServers").get(i).toString());
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if(file.exists() && config.getBoolean("ServerGrouping")){
-            for(int i = 0; i <= config.getInt("AmountOfGroups"); i++){
-                listOfGroups.add(config.getStringList("Group" + i));
-            }
-        }
         System.out.println("------------------------------");
         System.out.println(ChatColor.GREEN + "BungeeQueue Enabled");
-        System.out.println(ChatColor.GREEN + "Version 2.0.7");
+        System.out.println(ChatColor.GREEN + "Version 3.0.5");
         System.out.println(ChatColor.GREEN + "By Larskei @Larskei#0001");
         System.out.println(ChatColor.GREEN + "Designed for use in Waterfall/Bungeecord 1.14.4");
         System.out.println("------------------------------");
     }
-
-
-
-
+    //---------------------------------------------------------------------------------------------------------------------------------
+    //method called when a player does /join
+    //---------------------------------------------------------------------------------------------------------------------------------
     public void initiateMove(ProxiedPlayer player, String serverTarget) {
-
-        if (player.hasPermission("bungeequeue.skip")) {
-
-            if (player.hasPermission("bungeequeue.kick")) {
-
-                if (getProxy().getServerInfo(serverTarget).getPlayers().size() >= config.getInt("MaximumSize")) {
-
-                    if (serverKick(serverTarget)) {
-
-                        player.connect(getProxy().getServerInfo(serverTarget));
-
-                    } else {
-
-                        player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("FullServerCannotConnectMessage"))));
-                    }
-                }
-            } else {
-
-                player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("SkippingQueueMessage"))));
+        if(blockedServers.contains(serverTarget)){
+            player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("DenialToQueueMessage"))));
+        }
+        else {
+            if (player.hasPermission("bungeequeue.skip")) {
                 player.connect(getProxy().getServerInfo(serverTarget));
-            }
-        }
-
-        if (player.hasPermission("bungeequeue.donor")) {
-
-            if (player.hasPermission("bungeequeue.kick") && getProxy().getServerInfo(serverTarget).getPlayers().size() >= config.getInt("MaximumSize")) {
-
-                if (serverKick(serverTarget)) {
-
-                    isDonor = true;
-                    inDonorQueue++;
-                    int queueTime = getServerSize(serverTarget) / 1000;
-
-                    player.sendMessage(new TextComponent(ChatColor.GREEN + config.getString("ThankYouMessage")));
-                    player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("EnteringDonorQueueMessage1")) + getServerSize(serverTarget) + ChatColor.translateAlternateColorCodes('&', config.getString("EnteringDonorQueueMessage2"))));
-                    Runnable runnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            movePlayer(player, serverTarget);
-                            inDonorQueue = inDonorQueue - 1;
-
-                        }
-                    };
-                    getProxy().getScheduler().schedule(this, runnable, getServerSize(serverTarget), TimeUnit.SECONDS);
-                }
-
-                else if (!serverKick(serverTarget)) {
-
-                    player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("FullServerCannotConnectMessage"))));
-                }
-
-            }
-
-            else {
-
-                isDonor = true;
-                inDonorQueue++;
-                int queueTime = getServerSize(serverTarget) / 1000;
-
-                player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("ThankYouMessage"))));
-                player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("EnteringDonorQueueMessage1")) + getServerSize(serverTarget) + ChatColor.translateAlternateColorCodes('&', config.getString("EnteringDonorQueueMessage2"))));
-                Runnable runnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        movePlayer(player, serverTarget);
-                        inDonorQueue = inDonorQueue - 1;
-
-                    }
-                };
-                getProxy().getScheduler().schedule(this, runnable, getServerSize(serverTarget), TimeUnit.SECONDS);
-            }
-
-        }
-        if (!player.hasPermission("bungeequeue.donor") && !player.hasPermission("bungeequeue.skip")) {
-            if (player.hasPermission("bungeequeue.kick") && getProxy().getServerInfo(serverTarget).getPlayers().size() >= config.getInt("MaximumSize")) {
-                if (serverKick(serverTarget)) {
-                    player.connect(getProxy().getServerInfo(serverTarget));
-                } else {
-                    player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("FullServerCannotConnectMessage"))));
-                }
             } else {
-
-                inQueue++;
-                int queueTime = getServerSize(serverTarget) / 1000;
-                player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("JoinedQueueMessage"))));
-                player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("EnteringNonDonorQueueMessage1")) + queueTime + ChatColor.translateAlternateColorCodes('&', config.getString("EnteringNonDonorQueueMessage2")) + inQueue + ChatColor.translateAlternateColorCodes('&', config.getString("EnteringNonDonorQueueMessage3"))));
-                Runnable runnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        movePlayer(player, serverTarget);
-                        inQueue = inQueue - 1;
-
-                    }
-                };
-                getProxy().getScheduler().schedule(this, runnable, getServerSize(serverTarget), TimeUnit.SECONDS);
+                determineType(player, serverTarget);
+                player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("ConnectingMessage"))));
             }
         }
     }
 
+    //---------------------------------------------------------------------------------------------------------------------------------
+    //handles calling the right methods to determine which queue to use
+    //---------------------------------------------------------------------------------------------------------------------------------
+    public void determineType(ProxiedPlayer player, String target){
+        if(isPaused(target)){
+            addPlayerToPauseList(player, target);
+            sendPauseMessage(player);
+            return;
+        }
+        if(isFreeSlotAvailable(target)) {
 
+            if (player.hasPermission("bungeequeue.donor")) {
+                inDonorQueue = inDonorQueue + 1;
+                queueDonorClean(player, target);
+            } else {
+                inQueue = inQueue + 1;
+                queueRegularClean(player, target);
+            }
+        }
+        else{
+            addToWaitlist(player, target);
+            String message = config.getString("FullServerCannotConnectMessage");
+            message = message.replace("%waitposition%", String.valueOf(waitingPlayers.size()));
+            player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
+        }
+    }
 
-
-    public boolean serverKick(String serverTarget) {
-        for (ProxiedPlayer player : getProxy().getServerInfo(serverTarget).getPlayers()) {
-            if (!player.hasPermission("bungeequeue.nokick")) {
-                if(config.getBoolean("ServerGrouping")){
-                    moveGroups(player);
-                    return true;
-
-                }else{
-                    player.connect(getProxy().getServerInfo(config.getString("FallBackServer")));
-                    return true;
+    public void removeFromQueues(ProxiedPlayer player){
+        if(pausedPlayers.contains(player)){
+            for(int i = 0; pausedPlayers.size() > i; i++){
+                if(pausedPlayers.get(i).equals(player)){
+                    pausedPlayers.remove(i);
+                    pausedTargets.remove(i);
+                    player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("QueueResetMessage"))));
                 }
             }
         }
-        return false;
-    }
-
-    public String getGroup(ProxiedPlayer player){
-        for(int i = 0; i <= listOfGroups.size(); i++){
-            for(int index = 0; index <= listOfGroups.get(i).size(); index++){
-                if(player.getServer().toString().equalsIgnoreCase(listOfGroups.get(i).get(index).toString())){
-                    String indexes = String.valueOf(i) + String.valueOf(index);
-                    return indexes;
+        if(waitingPlayers.contains(player)){
+            for(int i = 0; waitingPlayers.size() > i; i++){
+                if(waitingPlayers.get(i).equals(player)){
+                    waitingPlayers.remove(i);
+                    waitingPlayersTargets.remove(i);
+                    player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("QueueResetMessage"))));
                 }
-
-            }
-
-
-
-        }
-        return null;
-
-    }
-
-    public void moveGroups(ProxiedPlayer player){
-        for(int i = 0; i <= listOfGroups.get(i).size(); i++){
-            if(!listOfGroups.get(Integer.parseInt(getGroup(player).substring(0, 1))).get(i).equalsIgnoreCase(player.getServer().toString()) && getProxy().getServerInfo(listOfGroups.get(Integer.parseInt(getGroup(player).substring(0, 1))).get(i)).getPlayers().size() < config.getInt("MaximumSize")){
-                player.connect(getProxy().getServerInfo(listOfGroups.get(Integer.parseInt(getGroup(player).substring(0, 1))).get(i).toString()));
-                return;
             }
         }
-        player.connect(getProxy().getServerInfo(config.getString("FallBackServer")));
-        return;
     }
 
-
+    public void sendPauseMessage(ProxiedPlayer player){
+        player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("PausedServerMessage"))));
+    }
 
 
     //---------------------------------------------------------------------------------------------------------------------------------
+    // This handles the messages sent to the players
+    //---------------------------------------------------------------------------------------------------------------------------------
+    public String getMessageToSend(ProxiedPlayer player, Boolean donor, String target){
+        if(donor){
+            //Handles replacing the placeholders inside of the configuration messages if the player is a donor
+           String messageToBeTranslated = config.getString("EnteringDonorQueueMessage");
+           String newMessage = messageToBeTranslated.replace("%queueposition%", String.valueOf(inDonorQueue));
+           newMessage = newMessage.replace("%queuetime%", String.valueOf(getQueueTime(target, true)));
+           newMessage = newMessage.replace("%donorqueuetotal%", String.valueOf(inDonorQueue));
+           return newMessage;
+        }
+        else if(!donor){
+            //handles replacing the message if the player is not a donor
+            String messageToBeTranslated = config.getString("EnteringQueueMessage");
+            String newMessage = messageToBeTranslated.replace("%queueposition%", String.valueOf(inQueue));
+            newMessage = newMessage.replace("%queuetime%", String.valueOf(getQueueTime(target, false)));
+            newMessage = newMessage.replace("%queuetotal%", String.valueOf(inQueue));
+            return newMessage;
+        }
+        return null;
+    }
+
+    //---------------------------------------------------------------------------------------------------------------------------------
+    //handles clearing out the queue, as well as the waitlist operations
+    //---------------------------------------------------------------------------------------------------------------------------------
+
+    public void queueRegularClean(ProxiedPlayer player, String target) {
+        player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', getMessageToSend(player, false, target))));
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                movePlayer(player, target);
+                inQueue = inQueue - 1;
+            }
+        };
+        getProxy().getScheduler().schedule(this, runnable, getQueueTime(target, false), TimeUnit.SECONDS);
+    }
 
 
-    public int getServerSize(String serverName) {
+    public void queueDonorClean(ProxiedPlayer player, String target) {
+        player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', getMessageToSend(player, true, target))));
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                movePlayer(player, target);
+                inDonorQueue = inDonorQueue - 1;
+            }
+        };
+        getProxy().getScheduler().schedule(this, runnable, getQueueTime(target, true), TimeUnit.SECONDS);
+    }
+
+
+
+    public void addToWaitlist(ProxiedPlayer player, String target){
+        waitingPlayers.add(player);
+        waitingPlayersTargets.add(target);
+        if(!isCheck){
+            queueChecker();
+        }
+    }
+
+    public void queueChecker() {
+        isCheck = true;
+            Runnable runnable = new Runnable() {
+                @Override
+                public void run() {
+                    for (int i = 0; waitingPlayersTargets.size() - 1 >= i; i++) {
+                        if (isFreeSlotAvailable(waitingPlayersTargets.get(i))) {
+                            movePlayer(waitingPlayers.get(i), waitingPlayersTargets.get(i));
+                            ProxiedPlayer player = waitingPlayers.get(i);
+                            waitingPlayersTargets.remove(i);
+                            waitingPlayers.remove(i);
+                            sendUpdateMessage(player);
+                        }
+                    }
+                    if (waitingPlayers.size() > 0) {
+                        queueChecker();
+                    } else {
+                        isCheck = false;
+                    }
+                }
+            };
+            getProxy().getScheduler().schedule(this, runnable, 1, TimeUnit.SECONDS);
+    }
+
+    public void sendUpdateMessage(ProxiedPlayer player){
+        for(int i = 0; waitingPlayers.size() - 1 > i; i++){
+            String message = config.getString("UpdateMessageForWaitingPlayers");
+            message = message.replace("%waitingposition%", String.valueOf(i));
+            message = message.replace("%playerWhoConnected%", player.getDisplayName());
+            waitingPlayers.get(i).sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
+        }
+    }
+
+
+    //---------------------------------------------------------------------------------------------------------------------------------
+    //This handles the calculation of the queue time when a player joins the queue
+    //---------------------------------------------------------------------------------------------------------------------------------
+
+    public int getQueueTime(String serverName, boolean donator) {
         if (checkIfServerNameValid(serverName)) {
-            if (!config.getBoolean("IsServerSizeCalculated")) {
-                if (isDonor) {
-                    int donorConfiggedWait = config.getInt("DonorWaitMultiplier");
-                    return (donorConfiggedWait * inDonorQueue) + getProxy().getServerInfo(serverName).getPlayers().size();
-                } else {
-                    int configgedWait = config.getInt("WaitMultiplier");
-                    return configgedWait * inQueue;
+            if(config.getBoolean("isServerSizeCalculated")){
+                if(donator){
+                    return (inDonorQueue * config.getInt("DonorWaitMultiplier")) + getProxy().getServerInfo(serverName).getPlayers().size();
+                }
+                else{
+                    return (inQueue * config.getInt("DonorWaitMultiplier")) + getProxy().getServerInfo(serverName).getPlayers().size();
                 }
             }
-            if (config.getBoolean("IsServerSizeCalculated")) {
-                if (isDonor) {
-                    int donorConfiggedWait = config.getInt("DonorWaitMultiplier");
-                    return (donorConfiggedWait * inDonorQueue) + getProxy().getServerInfo(serverName).getPlayers().size();
-                } else {
-                    int configgedWait = config.getInt("WaitMuliplier");
-                    return (inQueue * configgedWait) + getProxy().getServerInfo(serverName).getPlayers().size();
+            else{
+                if(donator){
+                    return inDonorQueue * config.getInt("DonorWaitMultiplier");
+                }
+                else{
+                    return inQueue * config.getInt("DonorWaitMultiplier");
                 }
             }
-
-
         }
 
         return 20;
     }
 
+    //---------------------------------------------------------------------------------------------------------------------------------
+    //This is called to see if a free slot is available, and if not it returns false, used to determine whether or not the player should be in waiting queue or normal queue
+    //---------------------------------------------------------------------------------------------------------------------------------
+
+    public boolean isFreeSlotAvailable(String server){
+        if(listConfig.getStringList("MaximumServerSizeNames").contains(server)){
+            ArrayList<String> servers = new ArrayList<>();
+            servers.addAll(listConfig.getStringList("MaximumServerSizeNames"));
+            ArrayList<Integer> sizes = new ArrayList<>();
+            sizes.addAll(listConfig.getIntList("MaximumServerSizes"));
+            for(int i = 0; servers.size() > i; i++){
+                if(servers.get(i).equalsIgnoreCase(server)){
+                    if(sizes.get(i) >= getProxy().getServerInfo(server).getPlayers().size()){
+                        return true;
+                    } else{
+                        return false;
+                    }
+                }
+            }
+        }
+        if(getProxy().getServerInfo(server).getPlayers().size() <= config.getInt("MaximumSize")){
+            return true;
+        } else{
+            return false;
+        }
+    }
+
+
 
     public void movePlayer(ProxiedPlayer player, String target) {
 
         player.connect(ProxyServer.getInstance().getServerInfo(target));
-        System.out.println(ChatColor.GREEN + "[BungeeQueue] " + player.getDisplayName() + " moved to " + target + " was in queue for " + getServerSize(target) + " seconds.");
+        System.out.println(ChatColor.GREEN + "[BungeeQueue] " + player.getDisplayName() + " moved to " + target);
     }
 
 
     public ProxiedPlayer getProxiedPlayer(String name) {
         return getProxy().getPlayer(name);
     }
+    //---------------------------------------------------------------------------------------------------------------------------------
+    //This is called when a player does the command initially so that it can verify if the server exists
+    //---------------------------------------------------------------------------------------------------------------------------------
 
     public boolean checkIfServerNameValid(String serverName) {
-        if (getProxy().getServerInfo(serverName).getName().equalsIgnoreCase(serverName)) {
+        if(getProxy().getServers().containsKey(serverName)){
             return true;
-        } else {
+        } else{
             return false;
         }
     }
+
+
     //---------------------------------------------------------------------------------------------------------------------------------
-    //API
+    //Pause methods, used to handle the pause and unpausing of servers as well as their players
     //---------------------------------------------------------------------------------------------------------------------------------
+
+    public void pauseToggler(String target){
+        if(pausedServers.contains(target)){
+            clearPlayersInPause(target);
+            pausedServers.remove(target);
+            listConfig.set("PausedServers", pausedServers);
+            try {
+                ConfigurationProvider.getProvider(YamlConfiguration.class).save(listConfig, fileLists);
+            }
+            catch(IOException e){
+             e.printStackTrace();
+            }
+        }
+        else{
+            pausedServers.add(target);
+            listConfig.set("PausedServers", pausedServers);
+            try {
+                ConfigurationProvider.getProvider(YamlConfiguration.class).save(listConfig, fileLists);
+            }
+            catch(IOException e){
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void clearPlayersInPause(String target){
+        for(int i = 0; pausedPlayers.size() > i; i++){
+            if(pausedTargets.get(i).equalsIgnoreCase(target)){
+                initiateMove(pausedPlayers.get(i), pausedTargets.get(i));
+            }
+        }
+    }
+
+    public void addPlayerToPauseList(ProxiedPlayer player, String target){
+        String message = config.getString("PausedServerMessage");
+        message = message.replace("%waitingpos", Integer.toString(pausedPlayers.size()));
+        player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
+        pausedPlayers.add(player);
+        pausedTargets.add(target);
+    }
+
+    public boolean isPaused(String target){
+        if(pausedServers.contains(target)){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+
+    public void leaveQueue(ProxiedPlayer player){
+        if(pausedPlayers.contains(player)){
+            for(int i = 0; pausedPlayers.size() > i; i++){
+                if(pausedPlayers.get(i).equals(player)){
+                    String message = config.getString("LeftQueueMessage");
+                    message = message.replace("%servername%", pausedTargets.get(i));
+                    pausedPlayers.remove(i);
+                    pausedTargets.remove(i);
+                    player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
+                }
+            }
+        }
+        if(waitingPlayers.contains(player)){
+            for(int i = 0; waitingPlayers.size() > i; i++){
+                if(waitingPlayers.get(i).equals(player)){
+                    String message = config.getString("LeftQueueMessage");
+                    message = message.replace("%servername%", pausedTargets.get(i));
+                    waitingPlayers.remove(i);
+                    waitingPlayersTargets.remove(i);
+                    player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', message)));
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
 
 
     public int getQueueSize(){

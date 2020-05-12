@@ -6,7 +6,7 @@
 
     <groupId>BungeeQueue</groupId>
     <artifactId>BungeeQueue</artifactId>
-    <version>2.0.7</version>
+    <version>3.0.5</version>
     <packaging>jar</packaging>
 
     <name>BungeeQueue</name>

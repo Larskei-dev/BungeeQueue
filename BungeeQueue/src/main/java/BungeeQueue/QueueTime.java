@@ -23,7 +23,7 @@ public class QueueTime extends Command {
             sender.sendMessage(new TextComponent(ChatColor.RED + "Invalid server name"));
         }
         if (main.checkIfServerNameValid(args[0])) {
-            sender.sendMessage(new TextComponent(ChatColor.GREEN + " Queue time for " + args[0] + " is currently " + main.getServerSize(args[0]) + " seconds"));
+            sender.sendMessage(new TextComponent(ChatColor.GREEN + " Queue time for " + args[0] + " is currently " + main.getQueueTime(args[0], false) + " seconds"));
             return;
         } else {
             sender.sendMessage(new TextComponent(ChatColor.RED + " That server does not exist or you have not specified a server"));

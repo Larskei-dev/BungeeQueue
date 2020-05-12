@@ -1,7 +1,10 @@
+BungeeQueue\Pause.class
 BungeeQueue\QueueMain.class
 BungeeQueue\QueueMain$1.class
 BungeeQueue\QTime.class
 BungeeQueue\QueueMain$3.class
+BungeeQueue\EventManager.class
+BungeeQueue\Leave.class
 BungeeQueue\QueueTime.class
 BungeeQueue\Move.class
 BungeeQueue\QueueMain$2.class
