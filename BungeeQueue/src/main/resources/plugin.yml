@@ -2,4 +2,4 @@ name: BungeeQueue
 author: Larskei
 version: ${project.version}
 main: BungeeQueue.QueueMain
-description: A very simple bungeecord queue system
+description: A highly customizable queue system.

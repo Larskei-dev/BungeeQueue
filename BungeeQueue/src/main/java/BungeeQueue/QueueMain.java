@@ -95,12 +95,13 @@ public final class QueueMain extends Plugin {
                     config.set("||", "if 2 players are in queue 2nd player has Multiplier * 2 to wait before they enter the server, if your server is crashing because of players joining to fast try setting the multiplier larger");
                     config.set("-", "--------------------------------------------------------------------------");
                     config.set("ConnectingMessage", "&aConnecting... Please wait.");
-                    config.set("Multiplier", 1);
+                    config.set("Multiplier", 1.0);
+                    config.set("WaitingQueueCheckTimer", 1.0);
                     config.set("|||", "This decides whether or not to factor server size in (default is false)");
                     config.set("||||", "If true new equation is (AmountOfPlayersInQueue * Multiplier) + AmountOfPlayersOnServer");
                     config.set("--", "--------------------------------------------------------------------------");
                     config.set("IsServerSizeCalculated", false);
-                    config.set("DonorWaitMultiplier", 1);
+                    config.set("DonorWaitMultiplier", 1.0);
                     config.set("---", "--------------------------------------------------------------------------");
                     config.set("|||||", "The message sent to non-donors, available placeholders %queuetime%  %queueposition% and %queuetotal% (QueueTime shows the estimated time till connection, queueposition shows their queueposition, and queuetotal shows total players in queue");
                     config.set("----", "--------------------------------------------------------------------------");
@@ -157,6 +158,11 @@ public final class QueueMain extends Plugin {
     public void initiateMove(ProxiedPlayer player, String serverTarget) {
         if(blockedServers.contains(serverTarget)){
             player.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("DenialToQueueMessage"))));
+            return;
+        }
+        if(isPaused(serverTarget)){
+            addPlayerToPauseList(player, serverTarget);
+            return;
         }
         else {
             if (player.hasPermission("bungeequeue.skip")) {
@@ -257,7 +263,7 @@ public final class QueueMain extends Plugin {
                 inQueue = inQueue - 1;
             }
         };
-        getProxy().getScheduler().schedule(this, runnable, getQueueTime(target, false), TimeUnit.SECONDS);
+        getProxy().getScheduler().schedule(this, runnable, getQueueTime(target, false), TimeUnit.MILLISECONDS);
     }
 
 
@@ -270,7 +276,7 @@ public final class QueueMain extends Plugin {
                 inDonorQueue = inDonorQueue - 1;
             }
         };
-        getProxy().getScheduler().schedule(this, runnable, getQueueTime(target, true), TimeUnit.SECONDS);
+        getProxy().getScheduler().schedule(this, runnable, getQueueTime(target, true), TimeUnit.MILLISECONDS);
     }
 
 
@@ -288,23 +294,37 @@ public final class QueueMain extends Plugin {
             Runnable runnable = new Runnable() {
                 @Override
                 public void run() {
-                    for (int i = 0; waitingPlayersTargets.size() - 1 >= i; i++) {
-                        if (isFreeSlotAvailable(waitingPlayersTargets.get(i))) {
-                            movePlayer(waitingPlayers.get(i), waitingPlayersTargets.get(i));
-                            ProxiedPlayer player = waitingPlayers.get(i);
-                            waitingPlayersTargets.remove(i);
-                            waitingPlayers.remove(i);
-                            sendUpdateMessage(player);
+                    for(int i = 0; i < getFirstInWait().size(); i++){
+                        if(isFreeSlotAvailable(getFirstInWait().get(i).toString())){
+                            for(int index = 0; index < waitingPlayers.size(); index++){
+                                if(waitingPlayersTargets.get(i).equalsIgnoreCase(getFirstInWait().get(i).toString())){
+                                   waitingPlayers.get(i).sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', config.getString("ConnectingMessage"))));
+                                   waitingPlayers.get(i).connect(getProxy().getServerInfo(waitingPlayersTargets.get(i)));
+                                   waitingPlayers.remove(i);
+                                   waitingPlayersTargets.remove(i);
+                                   for(int indexer = 0; indexer < waitingPlayers.size(); indexer++){
+                                       sendUpdateMessage(waitingPlayers.get(indexer));
+                                   }
+                                }
+                            }
                         }
-                    }
-                    if (waitingPlayers.size() > 0) {
-                        queueChecker();
-                    } else {
-                        isCheck = false;
                     }
                 }
             };
-            getProxy().getScheduler().schedule(this, runnable, 1, TimeUnit.SECONDS);
+            getProxy().getScheduler().schedule(this, runnable, (int) config.getDouble("WaitingQueueCheckTimer") * 1000, TimeUnit.MILLISECONDS);
+    }
+
+    public List getFirstInWait(){
+        List<String> firstTargets = new ArrayList<>();
+        for(int i = 0; waitingPlayersTargets.size() - 1 >= i; i++){
+            if(getProxy().getServers().containsKey(waitingPlayersTargets.get(i))){
+                if(!firstTargets.contains(waitingPlayersTargets.get(i))){
+                    firstTargets.add(waitingPlayersTargets.get(i));
+                }
+            }
+
+        }
+        return firstTargets;
     }
 
     public void sendUpdateMessage(ProxiedPlayer player){
@@ -325,18 +345,18 @@ public final class QueueMain extends Plugin {
         if (checkIfServerNameValid(serverName)) {
             if(config.getBoolean("isServerSizeCalculated")){
                 if(donator){
-                    return (inDonorQueue * config.getInt("DonorWaitMultiplier")) + getProxy().getServerInfo(serverName).getPlayers().size();
+                    return (inDonorQueue * (int) (config.getDouble("DonorWaitMultiplier") * 1000)) + getProxy().getServerInfo(serverName).getPlayers().size();
                 }
                 else{
-                    return (inQueue * config.getInt("DonorWaitMultiplier")) + getProxy().getServerInfo(serverName).getPlayers().size();
+                    return (inQueue * (int) (config.getDouble("Multiplier") * 1000)) + getProxy().getServerInfo(serverName).getPlayers().size();
                 }
             }
             else{
                 if(donator){
-                    return inDonorQueue * config.getInt("DonorWaitMultiplier");
+                    return inDonorQueue * (int) (config.getDouble("DonorWaitMultiplier") * 1000);
                 }
                 else{
-                    return inQueue * config.getInt("DonorWaitMultiplier");
+                    return inQueue * (int) (config.getDouble("Multiplier") * 1000);
                 }
             }
         }

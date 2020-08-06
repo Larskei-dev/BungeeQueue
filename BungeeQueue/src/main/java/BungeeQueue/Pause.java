@@ -21,20 +21,24 @@ public class Pause extends Command {
 
             if (args.length == 0) {
                 sender.sendMessage(new TextComponent(ChatColor.RED + "You must enter a server name to pause"));
+                return;
             }
             if (args.length > 0) {
                 if (main.checkIfServerNameValid(args[0])) {
                     main.pauseToggler(args[0]);
                     if(main.isPaused(args[0])){
                         sender.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', "&7[&6Queue&7] &aYou have &2&lPaused &athe queue for " + args[0])));
+                        return;
                     }
                     else {
                         sender.sendMessage(new TextComponent(ChatColor.translateAlternateColorCodes('&', "&7[&6Queue&7] &aYou have &c&lUnPaused &athe queue for " + args[0])));
+                        return;
                     }
                 }
             }
         } else{
             sender.sendMessage(new TextComponent(ChatColor.RED + "You don't have permission to do this!"));
+            return;
         }
     }
 

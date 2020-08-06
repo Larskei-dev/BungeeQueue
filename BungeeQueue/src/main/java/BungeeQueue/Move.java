@@ -31,6 +31,7 @@ public class Move extends Command {
                         if(main.isPaused(args[0])){
                             if(main.pausedPlayers.contains(main.getProxiedPlayer(sender.getName()))){
                                 main.removeFromQueues(main.getProxiedPlayer(sender.getName()));
+                                return;
                             }
                             main.addPlayerToPauseList(getPlayer(sender.getName()), args[0]);
                             return;

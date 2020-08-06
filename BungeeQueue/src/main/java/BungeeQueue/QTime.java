@@ -10,7 +10,7 @@ public class QTime extends Command {
     private QueueMain main;
 
     public QTime(QueueMain main) {
-        super("queuetime");
+        super("qtime");
         this.main = main;
     }
 
